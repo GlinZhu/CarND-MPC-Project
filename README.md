@@ -2,6 +2,21 @@
 Self-Driving Car Engineer Nanodegree Program
 
 ---
+## MPC Implementation
+In this project, model predictive controller is used to minimize the steering angle command and throttle command by following a predefined trajectory. There are six variables defined in the model:
+X - Vehicle location in x axis
+Y - Vehicle location in y axis
+Psi - Vehicle heading 
+V - vehicle speed
+CTE - cross track error, which is the error between middle of line and vehicle location
+Epsi - the vehicle heading error between real vehicle heading and tangent to the road curve
+
+The actuation output is steering angle and acceleration command
+## Time step and elapsed duration
+The time step was chosen to be 10 steps, since if time step is too large, it will require too much computation cost and lower the efficiency, thus 10 steps is a good starting point. 
+The elapsed duration was set to be 0.15s, which means the controller is predicting 1.5s duration in which to determine a corrective trajectory. 
+## Lateny implementation
+Since there is always latency in the real car during driving, such as CAN bus communication latency, etc. In this project, the main thread sleeps for 100ms before sending the actuations to the simulator. In order to account for this 100ms latency, I predicted the vehicle states after 100ms and then solve the optimal actuations based on predicted states. 
 
 ## Dependencies
 

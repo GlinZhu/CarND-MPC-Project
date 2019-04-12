@@ -13,9 +13,9 @@ using std::vector;
 /**
  * TODO: Set the timestep length and duration
  */
-size_t N = 20;
-double dt = 0.04;
-
+size_t N = 10;
+double dt = 0.15;
+double ref_v=60;
 size_t x_start = 0;
 size_t y_start = x_start + N;
 size_t psi_start = y_start + N;
@@ -53,10 +53,16 @@ public:
          */
         fg[0]=0;
         for(unsigned i=0;i<N;++i){
-            fg[0]+=CppAD::pow(vars[cte_start+i],2)+CppAD::pow(vars[epsi_start+i],2);
+            fg[0]+=100*CppAD::pow(vars[cte_start+i],2)+100*CppAD::pow(vars[epsi_start+i],2);
+            fg[0]+=CppAD::pow(vars[v_start+i]-ref_v,2);
         }
-        for(unsigned i=1;i<N;++i){
-            fg[0]+=20*CppAD::pow(vars[delta_start+i]-vars[delta_start+i-1],2)+CppAD::pow(vars[a_start+i]-vars[a_start+i-1],2);
+      for(unsigned i=0;i<N-1;++i){
+            fg[0]+=500*CppAD::pow(vars[delta_start+i],2)+60*CppAD::pow(vars[a_start+i],2);
+            //fg[0]+=500*CppAD::pow(vars[delta_start+i]*vars[a_start+i],2);
+        }
+        for(unsigned i=0;i<N-2;++i){
+            fg[0]+=80000*CppAD::pow(vars[delta_start+i+1]-vars[delta_start+i],2)+500*CppAD::pow(vars[a_start+i+1]-vars[a_start+i],2);
+          
         }
         
         
@@ -97,7 +103,7 @@ public:
             
             fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
             fg[1+y_start+t]=y1-(y0+v0*CppAD::sin(psi0)*dt);
-            fg[1+psi_start+t]=psi1-(psi0+v0*delta*dt)/Lf;
+            fg[1+psi_start+t]=psi1-(psi0-v0*delta*dt)/Lf;
             fg[1+v_start+t]=v1-v0-accel*dt;
             fg[1+cte_start+t]=cte1-(f0-y0)-v0*CppAD::sin(epsi0)*dt;
             fg[1+epsi_start+t]=epsi1-(psi0-psi_des)-v0*delta*dt/Lf;
@@ -135,7 +141,7 @@ std::vector<double> MPC::Solve(const VectorXd &state, const VectorXd &coeffs) {
     // Initial value of the independent variables.
     // SHOULD BE 0 besides initial state.
     Dvector vars(n_vars);
-    for (int i = 0; i < n_vars; ++i) {
+    for (unsigned int i = 0; i < n_vars; ++i) {
         vars[i] = 0.0;
     }
     double x=state[0];
@@ -156,15 +162,15 @@ std::vector<double> MPC::Solve(const VectorXd &state, const VectorXd &coeffs) {
     /**
      * TODO: Set lower and upper limits for variables.
      */
-    for(int t=0;t<delta_start;++t){
+    for(unsigned int t=0;t<delta_start;++t){
         vars_upperbound[t]=1.0e19;
         vars_lowerbound[t]=-1.0e19;
     }
-    for(int t=delta_start;t<a_start;++t){
-        vars_upperbound[t]=0.436332;
-        vars_lowerbound[t]=-0.436332;
+    for(unsigned int t=delta_start;t<a_start;++t){
+        vars_upperbound[t]=1;
+        vars_lowerbound[t]=-1;
     }
-    for(int t=a_start;t<n_vars;++t){
+    for(unsigned int t=a_start;t<n_vars;++t){
         vars_upperbound[t]=1;
         vars_lowerbound[t]=-1;
     }
@@ -173,7 +179,7 @@ std::vector<double> MPC::Solve(const VectorXd &state, const VectorXd &coeffs) {
     // Should be 0 besides initial state.
     Dvector constraints_lowerbound(n_constraints);
     Dvector constraints_upperbound(n_constraints);
-    for (int i = 0; i < n_constraints; ++i) {
+    for (unsigned int i = 0; i < n_constraints; ++i) {
         constraints_lowerbound[i] = 0;
         constraints_upperbound[i] = 0;
     }
@@ -234,7 +240,7 @@ std::vector<double> MPC::Solve(const VectorXd &state, const VectorXd &coeffs) {
     vector <double> output;
     output.push_back(solution.x[delta_start]);
     output.push_back(solution.x[a_start]);
-    for(int i=0;i<N-2;++i){
+    for(unsigned int i=0;i<N-2;++i){
         output.push_back(solution.x[x_start+i+1]);
         output.push_back(solution.x[y_start+i+1]);
     }

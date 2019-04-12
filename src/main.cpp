@@ -16,6 +16,7 @@ using nlohmann::json;
 using std::string;
 using std::vector;
 using Eigen::VectorXd;
+using json = nlohmann::json;
 // For converting back and forth between radians and degrees.
 constexpr double pi() { return M_PI; }
 double deg2rad(double x) { return x * pi() / 180; }
@@ -47,25 +48,49 @@ int main() {
                     double py = j[1]["y"];
                     double psi = j[1]["psi"];
                     double v = j[1]["speed"];
+                  	double delta= j[1]["steering_angle"];
+          			double a = j[1]["throttle"];
                     //Transform the map coordinates to car's coordinates
-                    double px_car, py_car;
+                    //double px_car, py_car;
                     int n_points=ptsx.size();
                     Eigen::VectorXd ptsx_car(n_points);
                     Eigen::VectorXd ptsy_car(n_points);
                     for(int i=0;i<n_points;++i){
                         double px_delta=ptsx[i]-px;
                         double py_delta=ptsy[i]-py;
-                        ptsx_car(i)=cos(psi)*px_delta-sin(psi)*py_delta;
-                        ptsy_car(i)=sin(psi)*px_delta+cos(psi)*py_delta;
+                        
+                        ptsx_car[i]=cos(-psi)*px_delta-sin(-psi)*py_delta;
+                        ptsy_car[i]=sin(-psi)*px_delta+cos(-psi)*py_delta;
                     }
                     
                     //VectorXd coeffs(4);
                     auto coeffs=polyfit(ptsx_car, ptsy_car, 3);
                     double cte=polyeval(coeffs, px)-py;
-                    double epsi=psi-polyderi(coeffs, px);
+                    //double epsi=psi-polyderi(coeffs, px);
+                    //Simulate the delay in 100ms
+                  // Initial state.
+          			const double x0 = 0;
+          			const double y0 = 0;
+          			const double psi0 = 0;
+                    //const double a0=0;
+          			const double cte0 = 0-polyeval(coeffs, 0);
+          			const double epsi0 = -atan(coeffs[1]);
+                    double vkph=v*1.63;
+                    double t_delay=0.1/(60*60);
+                  
+
+          			// State after delay.
+          			double x_delay = x0 + ( vkph * cos(psi0) * t_delay );
+          			double y_delay = y0 + ( vkph * sin(psi0) * t_delay );
+          			double psi_delay = psi0 - ( vkph * delta * t_delay / 2.67 );
+          			double v_delay = v + a * t_delay;
+          			double cte_delay = cte0 + ( vkph * sin(epsi0) * t_delay );
+          			double epsi_delay = epsi0 - ( vkph * atan(coeffs[1]) * t_delay / 2.67 );
                     Eigen::VectorXd state(6);
-                    state<< px, py, psi, v, cte, epsi;
-                    
+                    state<< x_delay, y_delay, psi_delay, v_delay, cte_delay, epsi_delay;
+                    //double vkph = v * 1.609344;
+                    //state<< vx, vy, vpsi, vkph, cte0, epsi0;
+                    //std::cout<<x_delay<<y_delay<<psi_delay<<v_delay<<cte_delay<<epsi_delay<<std::endl;
                     auto actuator=mpc.Solve(state, coeffs);
                     
                     /**
@@ -75,7 +100,7 @@ int main() {
                     
                     double steer_value;
                     double throttle_value;
-                    steer_value=-actuator[0]/deg2rad(25);
+                    steer_value=actuator[0]/deg2rad(25);
                     throttle_value=actuator[1];
                     
                     json msgJson;
@@ -113,10 +138,13 @@ int main() {
                     // Display the waypoints/reference line
                     vector<double> next_x_vals;
                     vector<double> next_y_vals;
-                    for(int i=0;i<15;++i){
-                        next_x_vals.push_back(1.5*i);
-                        next_y_vals.push_back(polyeval(coeffs, 1.5*i));
-                    }
+                    double poly_inc = 2.5;
+          			int num_points = 25;
+          			for ( int i = 0; i < num_points; i++ ) {
+            			double x = poly_inc * i;
+            			next_x_vals.push_back( x );
+            			next_y_vals.push_back( polyeval(coeffs, x) );
+          			}
                     
                     /**
                      * TODO: add (x,y) points to list here, points are in reference to

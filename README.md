@@ -26,15 +26,15 @@ The time step was chosen to be 10 steps, since if time step is too large, it wil
 The elapsed duration was set to be 0.15s, which means the controller is predicting 1.5s duration in which to determine a corrective trajectory. 
 ## Polynomial Fitting and MPC Preprocessing
 In order to get the optimal trajectory of vehicle, the simulator presents a number of waypoints in global coordinates, however, those waypoints need to be transformed to vehicle coordinates so that we can easily shift all points to basis which is the origin of vehicle (x=0, y=0). Rotation matrix described in Particle Filter lessons was introduced to transform those waypoints to the vehicle coordinates, which is shown below:
-`<
+```
 for(int i=0;i<n_points;++i){
 double px_delta=ptsx[i]-px;
 double py_delta=ptsy[i]-py;
 ptsx_car[i]=cos(-psi)*px_delta-sin(-psi)*py_delta;
 ptsy_car[i]=sin(-psi)*px_delta+cos(-psi)*py_delta;
 }
->`
-where `<px_delta=ptsx[i]-px>` indicates map coordinate was shifted to the vehicle coordiante with translation.
+```
+where ```<px_delta=ptsx[i]-px>``` indicates map coordinate was shifted to the vehicle coordiante with translation.
 
 ## Lateny implementation
 Since there is always latency in the real car during driving, such as CAN bus communication latency, etc. In this project, the main thread sleeps for 100ms before sending the actuations to the simulator. In order to account for this 100ms latency, I predicted the vehicle states after 100ms and then solve the optimal actuations based on predicted states. 

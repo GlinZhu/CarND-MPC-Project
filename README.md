@@ -2,7 +2,8 @@
 Self-Driving Car Engineer Nanodegree Program
 
 ---
-## MPC Implementation
+# MPC Implementation
+## Vehicle Kinematic model
 In this project, model predictive controller is used to minimize the steering angle command and throttle command by following a predefined trajectory. There are six variables defined in the model:
 X - Vehicle location in x axis
 Y - Vehicle location in y axis
@@ -10,35 +11,55 @@ Psi - Vehicle heading
 V - vehicle speed
 CTE - cross track error, which is the error between middle of line and vehicle location
 Epsi - the vehicle heading error between real vehicle heading and tangent to the road curve
+The simplified model was used to solve this problem, by considering kinematic bicycle model below, where we ignore the tire forces, gravity, and mass of car, instead, we take the coordinates of vehicle (x and y), velocity, and angle of current velocity with respect to the longitudinal axis of car. 
+* x(t+1)=x(t)+v(t)*cos(psi(t))*dt
+* y(t+1)=y(t)+v(t)*sin(psi(t))*dt
+* psi(t+1)=psi(t)+v(t)*delta(t)*dt/Lf
+* v(t+1)=v(t)+a(t)*dt
+* cte(t+1)=f(x(t))-y(t)+v(t)*sin(epsi(t))*dt
+* epsi(t+1)=psi(t)-psi_des+v(t)*delta(t)*dt/Lf
 
 The actuation output is steering angle and acceleration command
+
 ## Time step and elapsed duration
 The time step was chosen to be 10 steps, since if time step is too large, it will require too much computation cost and lower the efficiency, thus 10 steps is a good starting point. 
 The elapsed duration was set to be 0.15s, which means the controller is predicting 1.5s duration in which to determine a corrective trajectory. 
+## Polynomial Fitting and MPC Preprocessing
+In order to get the optimal trajectory of vehicle, the simulator presents a number of waypoints in global coordinates, however, those waypoints need to be transformed to vehicle coordinates so that we can easily shift all points to basis which is the origin of vehicle (x=0, y=0). Rotation matrix described in Particle Filter lessons was introduced to transform those waypoints to the vehicle coordinates, which is shown below:
+`<
+for(int i=0;i<n_points;++i){
+double px_delta=ptsx[i]-px;
+double py_delta=ptsy[i]-py;
+ptsx_car[i]=cos(-psi)*px_delta-sin(-psi)*py_delta;
+ptsy_car[i]=sin(-psi)*px_delta+cos(-psi)*py_delta;
+}
+>`
+where `<px_delta=ptsx[i]-px>` indicates map coordinate was shifted to the vehicle coordiante with translation.
+
 ## Lateny implementation
 Since there is always latency in the real car during driving, such as CAN bus communication latency, etc. In this project, the main thread sleeps for 100ms before sending the actuations to the simulator. In order to account for this 100ms latency, I predicted the vehicle states after 100ms and then solve the optimal actuations based on predicted states. 
 
 ## Dependencies
 
 * cmake >= 3.5
- * All OSes: [click here for installation instructions](https://cmake.org/install/)
+* All OSes: [click here for installation instructions](https://cmake.org/install/)
 * make >= 4.1(mac, linux), 3.81(Windows)
-  * Linux: make is installed by default on most Linux distros
-  * Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
-  * Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
+* Linux: make is installed by default on most Linux distros
+* Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
+* Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
 * gcc/g++ >= 5.4
-  * Linux: gcc / g++ is installed by default on most Linux distros
-  * Mac: same deal as make - [install Xcode command line tools]((https://developer.apple.com/xcode/features/)
-  * Windows: recommend using [MinGW](http://www.mingw.org/)
+* Linux: gcc / g++ is installed by default on most Linux distros
+* Mac: same deal as make - [install Xcode command line tools]((https://developer.apple.com/xcode/features/)
+* Windows: recommend using [MinGW](http://www.mingw.org/)
 * [uWebSockets](https://github.com/uWebSockets/uWebSockets)
-  * Run either `install-mac.sh` or `install-ubuntu.sh`.
-  * If you install from source, checkout to commit `e94b6e1`, i.e.
-    ```
-    git clone https://github.com/uWebSockets/uWebSockets
-    cd uWebSockets
-    git checkout e94b6e1
-    ```
-    Some function signatures have changed in v0.14.x. See [this PR](https://github.com/udacity/CarND-MPC-Project/pull/3) for more details.
+* Run either `install-mac.sh` or `install-ubuntu.sh`.
+* If you install from source, checkout to commit `e94b6e1`, i.e.
+```
+git clone https://github.com/uWebSockets/uWebSockets
+cd uWebSockets
+git checkout e94b6e1
+```
+Some function signatures have changed in v0.14.x. See [this PR](https://github.com/udacity/CarND-MPC-Project/pull/3) for more details.
 
 * **Ipopt and CppAD:** Please refer to [this document](https://github.com/udacity/CarND-MPC-Project/blob/master/install_Ipopt_CppAD.md) for installation instructions.
 * [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page). This is already part of the repo so you shouldn't have to worry about it.
@@ -96,7 +117,7 @@ for instructions and the project rubric.
 ## Hints!
 
 * You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
+will span all of the .cpp files here. Keep an eye out for TODOs.
 
 ## Call for IDE Profiles Pull Requests
 
